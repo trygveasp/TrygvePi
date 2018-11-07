@@ -202,8 +202,10 @@ class Screen(Frame):
         #self.master.geometry("{0}x{1}+0+0".format(
         #    self.master.winfo_screenwidth()-self.pad, self.master.winfo_screenheight()-self.pad))
         self.master.geometry("{0}x{1}+0+0".format(800,480))
-        self.master.overrideredirect(1) 
         self.master.bind('<Escape>',self.toggle_geom)
+        self.master.bind("<Button-1>",self.toggle_geom)
+        self.master.wm_attributes('-type', 'splash');
+        #self.master.overrideredirect(1) 
 
         master.configure(background='white')
 
@@ -255,6 +257,9 @@ class Screen(Frame):
         self.master.grid_rowconfigure(0, weight=1)
 
         self.update() # start the update loop
+
+    def quit(self,event):
+        Frame.quit(self)
 
     def toggle_geom(self,event):
         geom=self.master.winfo_geometry()
