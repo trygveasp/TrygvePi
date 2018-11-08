@@ -12,6 +12,7 @@ import dateutil.parser
 from datetime import timedelta,datetime,tzinfo
 
 import matplotlib
+import pytz
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
@@ -180,11 +181,11 @@ def get_rain(location):
 
 def tempColor(value):
     color= "red"
-    if value < 0 : color="blue"
+    if value != "NA" and value < 0 : color="blue"
     return color
 
 def tempText(value):
-    if value != None:
+    if value != "NA":
         txt = " %s °C" % (value)
     else:
         txt = "NA"
@@ -226,20 +227,24 @@ class Screen(Frame):
         self.time1=''
         self.clock = Label(self.master, font=('times', 60, 'bold'), bg='white')
 
-        my_dpi=96
-        stHisFig=Figure(figsize=(400/my_dpi, 150/my_dpi), dpi=my_dpi)
+        my_dpi=80
+        stHisFig=Figure(figsize=(int(float(400)/float(my_dpi)), int(float(150)/float(my_dpi))), dpi=my_dpi)
         stHisFig.patch.set_facecolor('white')
         self.stHisPlot= stHisFig.add_subplot(111)
         stHisPlotCanvas = FigureCanvasTkAgg(stHisFig, master=self.master)
         stHisPlotCanvas.show()
 
-        bottomFig = Figure(figsize=(800/my_dpi, 200/my_dpi), dpi=my_dpi)
+        bottomFig = Figure(figsize=(int(float(800)/float(my_dpi)), int(float(200)/float(my_dpi))), dpi=my_dpi)
         bottomFig.patch.set_facecolor('white')
-        gs = gridspec.GridSpec(1, 2, width_ratios=[2, 5])
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 3])
         self.nowcast = bottomFig.add_subplot(gs[0])
+        #self.nowcast = bottomFig.add_subplot(121)
         self.nowcast.set_ylim(bottom=0.)
+        ticks=[0,15,30,45,60,75,90]
+        self.nowcast.axes.get_xaxis().set_ticks(ticks)
 
         self.forecast = bottomFig.add_subplot(gs[1])
+        #self.forecast = bottomFig.add_subplot(122)
 
 
         # a tk.DrawingArea
@@ -281,42 +286,57 @@ class Screen(Frame):
         indoorValues, outdoorValues, rainValues = get_measurement(self.location)
         updated="Updated: "+str(datetime.now().strftime("%H:%M"))
 
-
-        #xCenter = self.findXCenter(self.netatmo, self.indoor)
-
         #Inddor
+        updated = "Updated: NA"
+        if "time_utc" in indoorValues: updated = "Updated: "+datetime.fromtimestamp(indoorValues["time_utc"], pytz.timezone('Europe/Amsterdam')).strftime("%H:%M")
         if hasattr(self,'netatmoUpdated'): self.netatmo.delete(self.netatmoUpdated)
         self.netatmoUpdated=self.netatmo.create_text(300, 10, text=updated,font=('verdana', 10))
 
         # Temp
         if hasattr(self, 'indoorTemp'): self.netatmo.delete(self.indoorTemp)
-        self.indoorTemp=self.netatmo.create_text(70, 40, text=tempText(indoorValues["Temperature"]), fill=tempColor(indoorValues["Temperature"]), font=('verdana', 20))
-
-        # Humidity
-        if hasattr(self, 'outdoorHumidity'): self.netatmo.delete(self.outdoorHumidity)
-        self.outdoorHumidity = self.netatmo.create_text(250, 40, text=str(outdoorValues["Humidity"])+'%',fill="black", font=('verdana', 20))
+        temp="NA"
+        if "Temperature" in indoorValues: temp=indoorValues["Temperature"]
+        self.indoorTemp=self.netatmo.create_text(60, 40, text=tempText(temp), fill=tempColor(temp), font=('verdana', 20))
 
         # Pressure
         if hasattr(self, 'indoorPressure'): self.netatmo.delete(self.indoorPressure)
-        self.indoorPressure = self.netatmo.create_text(70, 80, text=str(indoorValues["Pressure"])+'mb',fill="black", font=('verdana', 20))
+        pres="NA"
+        if "Pressure" in indoorValues: pres="{0:.0f}".format(round(float(indoorValues["Pressure"]),0))+' mb'
+        self.indoorPressure = self.netatmo.create_text(45, 90, text=pres,fill="black", font=('verdana', 12))
 
         # CO2
         if hasattr(self, 'indoorCO2'): self.netatmo.delete(self.indoorCO2)
-        self.indoorCO2 = self.netatmo.create_text(100, 120, text='CO2: '+str(indoorValues["CO2"])+'ppm',fill="black", font=('verdana', 20))
+        co2="NA"
+        if "CO2" in indoorValues: co2=str(indoorValues["CO2"])
+        self.indoorCO2 = self.netatmo.create_text(65, 120, text='co2: '+co2+'ppm',fill="black", font=('verdana', 12))
 
-        if hasattr(self, 'Rain1h'): self.netatmo.delete(self.Rain1h)
-        if "sum_rain_1" in rainValues:
-            self.Rain1h = self.netatmo.create_text(250, 80, text='RR1: '+str(rainValues["sum_rain_1"]),font=('verdana', 20))
-
+        #######################
         # Outdoor
+        #######################
+        updated="Updated: NA"
+        if "time_utc" in outdoorValues: updated="Updated: "+datetime.fromtimestamp(outdoorValues["time_utc"], pytz.timezone('Europe/Amsterdam')).strftime("%H:%M")
         if hasattr(self, 'netatmoOutdoorUpdated'): self.netatmoOutdoor.delete(self.netatmoOutdoorUpdated)
         self.netatmoOutdoorUpdated = self.netatmoOutdoor.create_text(300, 12, text=updated, font=('verdana', 10))
 
         if hasattr(self,'outdoorTemp'): self.netatmoOutdoor.delete(self.outdoorTemp)
-        self.outdoorTemp=self.netatmoOutdoor.create_text(150, 75, text=tempText(outdoorValues["Temperature"]), fill=tempColor(outdoorValues["Temperature"]), font=('verdana', 50))
+        temp="NA"
+        if "Temperature" in outdoorValues: temp=outdoorValues["Temperature"]
+        self.outdoorTemp=self.netatmoOutdoor.create_text(250, 75, text=tempText(temp), fill=tempColor(temp), font=('verdana', 50))
 
+        # Humidity
+        if hasattr(self, 'outdoorHumidity'): self.netatmoOutdoor.delete(self.outdoorHumidity)
+        hum="NA"
+        if "Humidity" in outdoorValues: hum=str(outdoorValues["Humidity"])
+        self.outdoorHumidity = self.netatmoOutdoor.create_text(34, 90, text=hum + '%',
+                                                        fill="black", font=('verdana', 15))
+        # Rain
+        if hasattr(self, 'Rain1h'): self.netatmoOutdoor.delete(self.Rain1h)
+        rain1h="NA"
+        if "sum_rain_1" in rainValues: rain1h="{0:.1f}".format(round(float(rainValues["sum_rain_1"]),1))+'mm/h'
+        self.Rain1h = self.netatmoOutdoor.create_text(50, 120, text=rain1h,font=('verdana', 15))
 
         minutes,values=get_rain(self.location)
+        self.nowcast.axes.get_yaxis().set_visible(False)
         self.nowcast.plot(minutes,values)
         if max(values) > 0:
             self.nowcast.fill_between(minutes,0,values)
