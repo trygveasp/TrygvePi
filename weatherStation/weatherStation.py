@@ -37,21 +37,33 @@ def checkTime():
 def get_measurement(location):
 
     # 1 : Authenticate
-    authorization = lnetatmo.ClientAuth()
-
-    # 2 : Get devices list
-    indoor=None
-    outdoor=None
+    values={}
+    values.update({"indoorTemp":None})
+    values.update({"outdoorTemp": None})
+    values.update({"outdoorHumidity": "NA"})
+    values.update({"indoorPressure": "NA"})
+    values.update({"indoorCO2": "NA"})
     try:
+        authorization = lnetatmo.ClientAuth()
+
+        # 2 : Get devices list
         weatherData = lnetatmo.WeatherStationData(authorization)
-        indoor=weatherData.stationByName(name)["dashboard_data"]["Temperature"]
-        outdoor=weatherData.stationByName(name)["modules"][0]["dashboard_data"]["Temperature"]
-
+        print weatherData.stationByName(name)
+        indoorTemp=weatherData.stationByName(name)["dashboard_data"]["Temperature"]
+        values.update({"indoorTemp": indoorTemp})
+        outdoorTemp=weatherData.stationByName(name)["modules"][0]["dashboard_data"]["Temperature"]
+        values.update({"outdoorTemp": outdoorTemp})
+        outdoorHumididty = weatherData.stationByName(name)["modules"][0]["dashboard_data"]["Humidity"]
+        values.update({"outdoorHumidity": outdoorHumididty})
+        indoorPressure = weatherData.stationByName(name)["dashboard_data"]["Pressure"]
+        values.update({"indoorPressure": indoorPressure})
+        indoorCO2 = weatherData.stationByName(name)["dashboard_data"]["CO2"]
+        values.update({"indoorCO2": indoorCO2})
     except:
-        print "Not found"
+        print "Could not access and get all Netatmo station data"
 
-    print indoor,outdoor
-    return indoor,outdoor
+    print values
+    return values
 
 def minTime(times,GT=None):
     ind=-1
@@ -203,8 +215,8 @@ class Screen(Frame):
         #    self.master.winfo_screenwidth()-self.pad, self.master.winfo_screenheight()-self.pad))
         self.master.geometry("{0}x{1}+0+0".format(800,480))
         self.master.bind('<Escape>',self.toggle_geom)
-        self.master.bind("<Button-1>",self.toggle_geom)
-        self.master.wm_attributes('-type', 'splash');
+        self.master.bind("<Button-3>",self.quit)
+        self.master.wm_attributes('-type', 'splash')
         #self.master.overrideredirect(1) 
 
         master.configure(background='white')
@@ -222,7 +234,7 @@ class Screen(Frame):
 
 
         self.time1=''
-        self.clock = Label(self.master, font=('times', 50, 'bold'), bg='white')
+        self.clock = Label(self.master, font=('times', 60, 'bold'), bg='white')
 
         my_dpi=96
         stHisFig=Figure(figsize=(400/my_dpi, 150/my_dpi), dpi=my_dpi)
@@ -276,19 +288,40 @@ class Screen(Frame):
         print datetime.now()
         self.tick()
 
-        indoorTemp,outdoorTemp=get_measurement(self.location)
+        values=get_measurement(self.location)
         updated="Updated: "+str(datetime.now().strftime("%H:%M"))
 
-        if hasattr(self,'indoor'): self.netatmo.delete(self.indoor)
+
         #xCenter = self.findXCenter(self.netatmo, self.indoor)
-        self.indoor=self.netatmo.create_text(70, 40, text=tempText(indoorTemp), fill=tempColor(indoorTemp), font=('verdana', 20))
+
+        #Inddor
         if hasattr(self,'netatmoUpdated'): self.netatmo.delete(self.netatmoUpdated)
         self.netatmoUpdated=self.netatmo.create_text(300, 10, text=updated,font=('verdana', 10))
 
-        if hasattr(self,'outdoor'): self.netatmoOutdoor.delete(self.outdoor)
-        self.outdoor=self.netatmoOutdoor.create_text(150, 65, text=tempText(outdoorTemp), fill=tempColor(outdoorTemp), font=('verdana', 30))
+        # Temp
+        if hasattr(self, 'indoorTemp'): self.netatmo.delete(self.indoorTemp)
+        self.indoorTemp=self.netatmo.create_text(70, 40, text=tempText(values["indoorTemp"]), fill=tempColor(values["indoorTemp"]), font=('verdana', 20))
+
+        # Humidity
+        if hasattr(self, 'outdoorHumidity'): self.netatmo.delete(self.outdoorHumidity)
+        self.outdoorHumidity = self.netatmo.create_text(250, 40, text=str(values["outdoorHumidity"])+'%',fill="black", font=('verdana', 20))
+
+        # Pressure
+        if hasattr(self, 'indoorPressure'): self.netatmo.delete(self.indoorPressure)
+        self.indoorPressure = self.netatmo.create_text(70, 80, text=str(values["indoorPressure"])+'mb',fill="black", font=('verdana', 20))
+
+        # CO2
+        if hasattr(self, 'indoorCO2'): self.netatmo.delete(self.indoorCO2)
+        self.indoorCO2 = self.netatmo.create_text(100, 120, text='CO2: '+str(values["indoorCO2"])+'ppm',fill="black", font=('verdana', 20))
+
+
+        # Outdoor
         if hasattr(self, 'netatmoOutdoorUpdated'): self.netatmoOutdoor.delete(self.netatmoOutdoorUpdated)
-        self.netatmoOutdoorUpdated=self.netatmoOutdoor.create_text(300, 12, text=updated,font=('verdana', 10))
+        self.netatmoOutdoorUpdated = self.netatmoOutdoor.create_text(300, 12, text=updated, font=('verdana', 10))
+
+        if hasattr(self,'outdoorTemp'): self.netatmoOutdoor.delete(self.outdoorTemp)
+        self.outdoorTemp=self.netatmoOutdoor.create_text(150, 75, text=tempText(values["outdoorTemp"]), fill=tempColor(values["outdoorTemp"]), font=('verdana', 50))
+
 
         minutes,values=get_rain(self.location)
         self.nowcast.plot(minutes,values)
