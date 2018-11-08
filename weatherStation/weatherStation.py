@@ -37,70 +37,66 @@ def checkTime():
 def get_measurement(location):
 
     # 1 : Authenticate
-    values={}
-    values.update({"indoorTemp":None})
-    values.update({"outdoorTemp": None})
-    values.update({"outdoorHumidity": "NA"})
-    values.update({"indoorPressure": "NA"})
-    values.update({"indoorCO2": "NA"})
+
+    # Indoor:
+    # 'CO2': 587, #
+    # 'Temperature': 20.2,
+    # 'time_utc': 1541674966,
+    # 'pressure_trend': 'up',
+    # 'temp_trend': u'stable',
+    # 'Humidity': 44,
+    # 'Pressure': 1016.7,
+    # 'Noise': 37,
+    # 'AbsolutePressure': 989,
+    # 'date_max_temp': 1541651100,
+    # 'min_temp': 20,
+    # 'date_min_temp': 1541647172,
+    # 'max_temp': 21.5
+
+    # Outdoor [0]
+    # 'date_min_temp': 1541631702,
+    # 'Temperature': 6.3,
+    # 'time_utc': 1541674921,
+    # 'temp_trend': 'stable',
+    # 'Humidity': 100,
+    # 'date_max_temp': 1541673743,
+    # 'min_temp': 5.5,
+    # 'max_temp': 6.3
+
+    # Rain [1]
+    # 'time_utc': 1541674953,
+    # 'sum_rain_24': 0.8,
+    # 'sum_rain_1': 0,
+    # 'Rain': 0
+
+    indoorValues={}
+    outdoorValues={}
+    rainValues={}
     try:
         authorization = lnetatmo.ClientAuth()
 
         # 2 : Get devices list
         weatherData = lnetatmo.WeatherStationData(authorization)
-        print weatherData.stationByName(name)
-        indoorTemp=weatherData.stationByName(name)["dashboard_data"]["Temperature"]
-        values.update({"indoorTemp": indoorTemp})
-        outdoorTemp=weatherData.stationByName(name)["modules"][0]["dashboard_data"]["Temperature"]
-        values.update({"outdoorTemp": outdoorTemp})
-        outdoorHumididty = weatherData.stationByName(name)["modules"][0]["dashboard_data"]["Humidity"]
-        values.update({"outdoorHumidity": outdoorHumididty})
-        indoorPressure = weatherData.stationByName(name)["dashboard_data"]["Pressure"]
-        values.update({"indoorPressure": indoorPressure})
-        indoorCO2 = weatherData.stationByName(name)["dashboard_data"]["CO2"]
-        values.update({"indoorCO2": indoorCO2})
+        #print weatherData.stationByName(name)
+        for key in weatherData.stationByName(name)["dashboard_data"]:
+            indoorValues.update({key: weatherData.stationByName(name)["dashboard_data"][key]})
+
+        # Outdoor
+        for key in weatherData.stationByName(name)["modules"][0]["dashboard_data"]:
+            outdoorValues.update({key:weatherData.stationByName(name)["modules"][0]["dashboard_data"][key]})
+
+        # Rain
+        if len(weatherData.stationByName(name)["modules"]) > 0:
+            for key in weatherData.stationByName(name)["modules"][1]["dashboard_data"]:
+                rainValues.update({key: weatherData.stationByName(name)["modules"][1]["dashboard_data"][key]})
+
     except:
         print "Could not access and get all Netatmo station data"
 
-    print values
-    return values
-
-def minTime(times,GT=None):
-    ind=-1
-    time=-1
-    if len(times) > 0:
-        if GT != None:
-            minTime=GT
-        else:
-            minTime = times[0]
-        ind = 0
-        for time in times:
-            i = 0
-            if time < minTime:
-                minTime = time
-                ind = i
-            i = i + 1
-
-    return time,ind
-
-def sortValues(times1,values1):
-    times = []
-    values = []
-    if len(times1) > 0:
-
-        t, ind = minTime(times1)
-        times.append(t)
-        values.append(values1[ind])
-
-        for t in range(1,len(times1)):
-
-            t,ind=minTime(times1,times)
-            times.append(t)
-            values.append(values1[ind])
-
-    times = times1.sort()
-    values = values1
-    return times,values
+    print indoorValues
+    print outdoorValues
+    print rainValues
+    return indoorValues,outdoorValues,rainValues
 
 
 def getLocationForecast(location):
@@ -119,12 +115,9 @@ def getLocationForecast(location):
     root = ET.fromstring(response.content)
     product = root[1]
 
-    #time_data_list = [time.get('from') for time in product.iter('time')]
-    #value_data_list = [precipitation.get('value') for precipitation in product.iter('precipitation')]
 
     # Gets from-time and rain-value in a tuple and appends it to a list.
     timeSeries={}
-    weather_data = list()
     for i, time in enumerate(product.findall('time')):
         from_data = time.get('from')
         #print from_data
@@ -133,10 +126,8 @@ def getLocationForecast(location):
             for temperature in loc.iter('temperature'):  # time.find() by itself doesn't work.
                 #print temperature
                 value_data = temperature.get('value')
-            #weather_data.append((from_data, value_data))
             dt=dateutil.parser.parse(from_data, ignoretz=True)
             timeSeries.update({dt:value_data})
-
 
     return timeSeries
 
@@ -217,7 +208,6 @@ class Screen(Frame):
         self.master.bind('<Escape>',self.toggle_geom)
         self.master.bind("<Button-3>",self.quit)
         self.master.wm_attributes('-type', 'splash')
-        #self.master.overrideredirect(1) 
 
         master.configure(background='white')
 
@@ -288,7 +278,7 @@ class Screen(Frame):
         print datetime.now()
         self.tick()
 
-        values=get_measurement(self.location)
+        indoorValues, outdoorValues, rainValues = get_measurement(self.location)
         updated="Updated: "+str(datetime.now().strftime("%H:%M"))
 
 
@@ -300,27 +290,30 @@ class Screen(Frame):
 
         # Temp
         if hasattr(self, 'indoorTemp'): self.netatmo.delete(self.indoorTemp)
-        self.indoorTemp=self.netatmo.create_text(70, 40, text=tempText(values["indoorTemp"]), fill=tempColor(values["indoorTemp"]), font=('verdana', 20))
+        self.indoorTemp=self.netatmo.create_text(70, 40, text=tempText(indoorValues["Temperature"]), fill=tempColor(indoorValues["Temperature"]), font=('verdana', 20))
 
         # Humidity
         if hasattr(self, 'outdoorHumidity'): self.netatmo.delete(self.outdoorHumidity)
-        self.outdoorHumidity = self.netatmo.create_text(250, 40, text=str(values["outdoorHumidity"])+'%',fill="black", font=('verdana', 20))
+        self.outdoorHumidity = self.netatmo.create_text(250, 40, text=str(outdoorValues["Humidity"])+'%',fill="black", font=('verdana', 20))
 
         # Pressure
         if hasattr(self, 'indoorPressure'): self.netatmo.delete(self.indoorPressure)
-        self.indoorPressure = self.netatmo.create_text(70, 80, text=str(values["indoorPressure"])+'mb',fill="black", font=('verdana', 20))
+        self.indoorPressure = self.netatmo.create_text(70, 80, text=str(indoorValues["Pressure"])+'mb',fill="black", font=('verdana', 20))
 
         # CO2
         if hasattr(self, 'indoorCO2'): self.netatmo.delete(self.indoorCO2)
-        self.indoorCO2 = self.netatmo.create_text(100, 120, text='CO2: '+str(values["indoorCO2"])+'ppm',fill="black", font=('verdana', 20))
+        self.indoorCO2 = self.netatmo.create_text(100, 120, text='CO2: '+str(indoorValues["CO2"])+'ppm',fill="black", font=('verdana', 20))
 
+        if hasattr(self, 'Rain1h'): self.netatmo.delete(self.Rain1h)
+        if "sum_rain_1" in rainValues:
+            self.Rain1h = self.netatmo.create_text(250, 80, text='RR1: '+str(rainValues["sum_rain_1"]),font=('verdana', 20))
 
         # Outdoor
         if hasattr(self, 'netatmoOutdoorUpdated'): self.netatmoOutdoor.delete(self.netatmoOutdoorUpdated)
         self.netatmoOutdoorUpdated = self.netatmoOutdoor.create_text(300, 12, text=updated, font=('verdana', 10))
 
         if hasattr(self,'outdoorTemp'): self.netatmoOutdoor.delete(self.outdoorTemp)
-        self.outdoorTemp=self.netatmoOutdoor.create_text(150, 75, text=tempText(values["outdoorTemp"]), fill=tempColor(values["outdoorTemp"]), font=('verdana', 50))
+        self.outdoorTemp=self.netatmoOutdoor.create_text(150, 75, text=tempText(outdoorValues["Temperature"]), fill=tempColor(outdoorValues["Temperature"]), font=('verdana', 50))
 
 
         minutes,values=get_rain(self.location)
