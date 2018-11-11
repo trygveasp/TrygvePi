@@ -70,6 +70,7 @@ def get_measurement(location):
     # 'sum_rain_1': 0,
     # 'Rain': 0
 
+    name=location.name
     indoorValues={}
     outdoorValues={}
     rainValues={}
@@ -192,12 +193,14 @@ def tempText(value):
     return txt
 
 class Screen(Frame):
-    def __init__(self, master,location):
+    def __init__(self, master,locations):
         Frame.__init__(self, master)
 
         # Initialize
         self.master=master
-        self.location=location
+        self.locIndex=0
+        self.locations=locations
+        self.location=self.locations[self.locIndex]
 
         # Raspberry pi has 800x480 pixels
         # Set fullscreen
@@ -207,6 +210,7 @@ class Screen(Frame):
         #    self.master.winfo_screenwidth()-self.pad, self.master.winfo_screenheight()-self.pad))
         self.master.geometry("{0}x{1}+0+0".format(800,480))
         self.master.bind('<Escape>',self.toggle_geom)
+        self.master.bind("<Button-1>", self.changeLocation)
         self.master.bind("<Button-3>",self.quit)
         self.master.wm_attributes('-type', 'splash')
 
@@ -218,10 +222,10 @@ class Screen(Frame):
         print screenHeight
 
         self.netatmo = Canvas(self.master, bg="white",width=380, height=150)
-        self.netatmo.create_text(100,12,text=str(self.location.name)+" Indoor",font=('verdana', 10))
+        #self.netatmo.create_text(100,12,text=str(self.location.name)+" Indoor",font=('verdana', 10))
 
         self.netatmoOutdoor = Canvas(self.master, bg="white",width=380,height=130)
-        self.netatmoOutdoor.create_text(100,12,text=str(self.location.name)+" Outdoor", font=('verdana', 10))
+        #self.netatmoOutdoor.create_text(100,12,text=str(self.location.name)+" Outdoor", font=('verdana', 10))
 
 
         self.time1=''
@@ -233,31 +237,30 @@ class Screen(Frame):
         self.stHisPlot= stHisFig.add_subplot(111)
         stHisPlotCanvas = FigureCanvasTkAgg(stHisFig, master=self.master)
         stHisPlotCanvas.show()
+        self.stHisPlot.set_visible(False)
 
-        bottomFig = Figure(figsize=(int(float(800)/float(my_dpi)), int(float(200)/float(my_dpi))), dpi=my_dpi)
-        bottomFig.patch.set_facecolor('white')
+
+        self.bottomFig = Figure(figsize=(int(float(800)/float(my_dpi)), int(float(200)/float(my_dpi))), dpi=my_dpi)
+        self.bottomFig.patch.set_facecolor('white')
         gs = gridspec.GridSpec(1, 2, width_ratios=[1, 3])
-        self.nowcast = bottomFig.add_subplot(gs[0])
+        self.nowcast = self.bottomFig.add_subplot(gs[0])
         #self.nowcast = bottomFig.add_subplot(121)
-        self.nowcast.set_ylim(bottom=0.)
-        ticks=[0,15,30,45,60,75,90]
-        self.nowcast.axes.get_xaxis().set_ticks(ticks)
 
-        self.forecast = bottomFig.add_subplot(gs[1])
+        self.forecast = self.bottomFig.add_subplot(gs[1])
         #self.forecast = bottomFig.add_subplot(122)
 
 
         # a tk.DrawingArea
-        bottomPlots = FigureCanvasTkAgg(bottomFig, master=self.master)
-        bottomPlots.show()
+        self.bottomPlots = FigureCanvasTkAgg(self.bottomFig, master=self.master)
+        self.bottomPlots.show()
 
         self.netatmo.grid(row=0, column=0)
         stHisPlotCanvas.get_tk_widget().grid(row=0,column=1)
         stHisPlotCanvas._tkcanvas.grid(row=0, column=1)
         self.netatmoOutdoor.grid(row=1,column=0)
         self.clock.grid(row=1, column=1)
-        bottomPlots.get_tk_widget().grid(row=2,columnspan=2)
-        bottomPlots._tkcanvas.grid(row=2,columnspan=2)
+        self.bottomPlots.get_tk_widget().grid(row=2,columnspan=2)
+        self.bottomPlots._tkcanvas.grid(row=2,columnspan=2)
 
         self.master.grid_columnconfigure(0, weight=1, uniform="group1")
         self.master.grid_columnconfigure(1, weight=1, uniform="group1")
@@ -267,6 +270,12 @@ class Screen(Frame):
 
     def quit(self,event):
         Frame.quit(self)
+
+    def changeLocation(self,event):
+        self.locIndex=self.locIndex+1
+        if self.locIndex >= len(self.locations): self.locIndex=0
+        self.location=self.locations[self.locIndex]
+        self.update()
 
     def toggle_geom(self,event):
         geom=self.master.winfo_geometry()
@@ -287,6 +296,9 @@ class Screen(Frame):
         updated="Updated: "+str(datetime.now().strftime("%H:%M"))
 
         #Inddor
+        if hasattr(self,"indoorStation"): self.netatmo.delete(self.indoorStation)
+        self.indoorStation=self.netatmo.create_text(100, 12, text=str(self.location.name) + " Indoor", font=('verdana', 10))
+
         updated = "Updated: NA"
         if "time_utc" in indoorValues: updated = "Updated: "+datetime.fromtimestamp(indoorValues["time_utc"], pytz.timezone('Europe/Amsterdam')).strftime("%H:%M")
         if hasattr(self,'netatmoUpdated'): self.netatmo.delete(self.netatmoUpdated)
@@ -313,6 +325,9 @@ class Screen(Frame):
         #######################
         # Outdoor
         #######################
+        if hasattr(self,"outdoorStation"): self.netatmoOutdoor.delete(self.outdoorStation)
+        self.outdoorStation=self.netatmoOutdoor.create_text(100, 12, text=str(self.location.name) + " Outdoor", font=('verdana', 10))
+
         updated="Updated: NA"
         if "time_utc" in outdoorValues: updated="Updated: "+datetime.fromtimestamp(outdoorValues["time_utc"], pytz.timezone('Europe/Amsterdam')).strftime("%H:%M")
         if hasattr(self, 'netatmoOutdoorUpdated'): self.netatmoOutdoor.delete(self.netatmoOutdoorUpdated)
@@ -336,10 +351,20 @@ class Screen(Frame):
         self.Rain1h = self.netatmoOutdoor.create_text(50, 120, text=rain1h,font=('verdana', 15))
 
         minutes,values=get_rain(self.location)
-        self.nowcast.axes.get_yaxis().set_visible(False)
-        self.nowcast.plot(minutes,values)
+        self.nowcast.clear()
+        ticks=[0,15,30,45,60,75,90]
+        self.nowcast.axes.get_xaxis().set_ticks(ticks)
+
+        print minutes
+        print values
+
+        lines=self.nowcast.plot(minutes, values)
+        lines[0].set_ydata(values)
+        self.nowcast.set_ylim(bottom=0.,top=max(values)+0.2)
+
         if max(values) > 0:
-            self.nowcast.fill_between(minutes,0,values)
+           self.nowcast.fill_between(minutes,0,values)
+
 
         timeSeries=getLocationForecast(self.location)
         times=[]
@@ -349,7 +374,19 @@ class Screen(Frame):
             times.append(time)
             values.append(timeSeries[time])
 
-        self.forecast.plot(times,values)
+
+        self.forecast.clear()
+        lines=self.forecast.plot(times,values)
+
+        #ticks=[0,15,30,45,60,75,90]
+        #self.forecast.axes.get_xaxis().set_ticks(ticks)
+        now=datetime.now()
+        last=datetime.now()+timedelta(days=2)
+        self.forecast.set_xlim(left=now, right=last)
+        print times
+        print values
+        lines[0].set_ydata(values)
+        self.bottomPlots.draw_idle()
 
         updtime=300000
         #updtime=5000
@@ -367,20 +404,15 @@ class Screen(Frame):
         # could use >200 ms, but display gets jerky
         self.clock.after(200, self.tick)
 
-# Meiselen 19
-name="Aspelien Konnerud"
-LATITUDE = 59.7350
-LONGITUDE = 10.1242
-MSL = 231
+names=["Aspelien Konnerud","Aspelien"]
+latitudes=[59.7350,59.9775]
+longitudes=[10.1242,9.8978]
+msls=[231,175]
 
-# Bøen
-#name="Aspelien"
-#LATITUDE=59.9775
-#LONGITUDE=9.8978
-#MSL=175
-
-station=Location(name,LONGITUDE,LATITUDE,MSL)
+stations=[]
+for i in range(0,len(names)):
+    stations.append(Location(names[i],longitudes[i],latitudes[i],msls[i]))
 
 root=Tk()
-screen=Screen(root,station)
-root.mainloop(  )
+screen=Screen(root,stations)
+root.mainloop()
