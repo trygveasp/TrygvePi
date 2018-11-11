@@ -101,7 +101,7 @@ def get_measurement(location):
     return indoorValues,outdoorValues,rainValues
 
 
-def getLocationForecast(location):
+def getLocationForecast(location,vars):
 
     LATITUDE = location.lat
     LONGITUDE = location.lon
@@ -122,14 +122,30 @@ def getLocationForecast(location):
     timeSeries={}
     for i, time in enumerate(product.findall('time')):
         from_data = time.get('from')
-        #print from_data
-        for loc in time.iter('location'):  # time.find() by itself doesn't work.
-            #print loc
-            for temperature in loc.iter('temperature'):  # time.find() by itself doesn't work.
-                #print temperature
-                value_data = temperature.get('value')
-            dt=dateutil.parser.parse(from_data, ignoretz=True)
-            timeSeries.update({dt:value_data})
+        to_data=time.get('to')
+        dt_from = dateutil.parser.parse(from_data, ignoretz=True)
+        dt_to = dateutil.parser.parse(to_data, ignoretz=True)
+        print dt_from, dt_to
+        value_data={}
+        found=False
+        if dt_to == dt_from + timedelta(hours=1):
+            for loc in time.iter('location'):  # time.find() by itself doesn't work.
+                for var in ["precipitation"]:
+                    for v in loc.iter(var):
+                        print var,v.get("value")
+                        value_data.update({var:v.get('value')})
+                        found=True
+        elif dt_from == dt_to:
+            for loc in time.iter('location'):  # time.find() by itself doesn't work.
+                for var in vars:
+                    for v in loc.iter(var):
+                        print var,v.get("value")
+                        value_data.update({var:v.get('value')})
+                        found=True
+
+
+        if found: print dt_from,value_data
+        if found: timeSeries.update({dt_from: value_data})
 
     return timeSeries
 
@@ -220,6 +236,11 @@ class Screen(Frame):
         screenHeight=self.master.winfo_screenheight()
         print screenWidth
         print screenHeight
+
+        self.vars = ["temperature", "windDirection", "windSpeed", "windGust",
+                "areaMaxWindSpeed", "humidity", "pressure", "cloudiness",
+                "fog", "lowClouds", "mediumClouds", "highClouds", "temperatureProbability",
+                "windProbability", "dewpointTemperature"]
 
         self.netatmo = Canvas(self.master, bg="white",width=380, height=150)
         #self.netatmo.create_text(100,12,text=str(self.location.name)+" Indoor",font=('verdana', 10))
@@ -366,13 +387,16 @@ class Screen(Frame):
            self.nowcast.fill_between(minutes,0,values)
 
 
-        timeSeries=getLocationForecast(self.location)
+        timeSeries=getLocationForecast(self.location,self.vars)
         times=[]
         values=[]
         for time in sorted(timeSeries):
-            #print time,timeSeries[time]
-            times.append(time)
-            values.append(timeSeries[time])
+            var="precipitation"
+            var="temperature"
+            if var in timeSeries[time]:
+                print time, timeSeries[time]
+                times.append(time)
+                values.append(timeSeries[time][var])
 
 
         self.forecast.clear()
@@ -380,12 +404,13 @@ class Screen(Frame):
 
         #ticks=[0,15,30,45,60,75,90]
         #self.forecast.axes.get_xaxis().set_ticks(ticks)
-        now=datetime.now()
+        now=datetime.utcnow()
         last=datetime.now()+timedelta(days=2)
-        self.forecast.set_xlim(left=now, right=last)
+        self.forecast.set_xlim(left=now,right=last)
         print times
         print values
         lines[0].set_ydata(values)
+
         self.bottomPlots.draw_idle()
 
         updtime=300000
