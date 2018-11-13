@@ -487,10 +487,11 @@ class Screen(Frame):
         self.forecast.add_collection(colored_lines)
 
         if not hasattr(self,"axP"): self.axP=self.forecast.twinx()
-        self.axP.bar(precIndices,height=precipitation,width=0.8)
+        self.axP.clear()
+        self.axP.bar(precIndices,height=precipitation,width=1)
         self.axP.set_ylim(bottom=0, top=max(np.maximum(precipitation,2)))
 
-        lineWind=self.forecast.plot(windIndices,windspeed)
+        lineWind=self.forecast.plot(windIndices,windspeed,color="grey")
 
         today = now.replace(hour=0,second=0, minute=0, microsecond=0)
         ticks=[]
