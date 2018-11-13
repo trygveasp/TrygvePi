@@ -17,6 +17,8 @@ matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 from matplotlib import gridspec
+from matplotlib.collections import LineCollection
+import numpy as np
 
 class Location(object):
     def __init__(self,name,lon,lat,msl):
@@ -119,35 +121,64 @@ def getLocationForecast(location,vars):
 
 
     # Gets from-time and rain-value in a tuple and appends it to a list.
-    timeSeries={}
+    accVars1h = {}
+    accVars2h = {}
+    accVars3h = {}
+    accVars6h = {}
+    otherVars={}
     for i, time in enumerate(product.findall('time')):
         from_data = time.get('from')
         to_data=time.get('to')
         dt_from = dateutil.parser.parse(from_data, ignoretz=True)
         dt_to = dateutil.parser.parse(to_data, ignoretz=True)
-        print dt_from, dt_to
-        value_data={}
-        found=False
-        if dt_to == dt_from + timedelta(hours=1):
+        #print dt_from, dt_to
+
+        # Accumulated values
+        if dt_to > dt_from:
+            accTime=str(dt_to - dt_from).split(':')[0]
             for loc in time.iter('location'):  # time.find() by itself doesn't work.
                 for var in ["precipitation"]:
                     for v in loc.iter(var):
-                        print var,v.get("value")
-                        value_data.update({var:v.get('value')})
-                        found=True
-        elif dt_from == dt_to:
+                        atts={}
+                        for a in v.attrib:
+                            value=v.get(a)
+                            if a == "value" or a == "minvalue" or a == "maxvalue": value = float(value) / float(accTime)
+                            atts.update({a:value})
+
+                        #print time,var,atts
+                        # Update accumulated values valid for this time step
+                        if int(accTime) == 1:
+                            accVars1h.update({dt_to: {var:atts}})
+                        elif int(accTime) == 2:
+                            accVars2h.update({dt_to: {var:atts}})
+                        elif int(accTime) == 3:
+                            accVars3h.update({dt_to: {var:atts}})
+                        elif int(accTime) == 6:
+                            accVars6h.update({dt_to: {var:atts}})
+                        else:
+                            exit(3)
+
+        # Not accumulated variables
+        elif dt_to == dt_from:
             for loc in time.iter('location'):  # time.find() by itself doesn't work.
+                varData = {}
                 for var in vars:
+                    varAtts={}
                     for v in loc.iter(var):
-                        print var,v.get("value")
-                        value_data.update({var:v.get('value')})
-                        found=True
+                        for a in v.attrib:
+                            #print v.tag,v.attrib
 
+                            value=v.get(a)
+                            varAtts.update({a:value})
 
-        if found: print dt_from,value_data
-        if found: timeSeries.update({dt_from: value_data})
+                    varData.update({var:varAtts})
 
-    return timeSeries
+                otherVars.update({dt_to:varData})
+        else:
+            print "Should not happen",dt_from,dt_to
+            exit(2)
+
+    return accVars1h,otherVars,accVars2h,accVars3h,accVars6h
 
 def get_rain(location):
 
@@ -287,6 +318,7 @@ class Screen(Frame):
         self.master.grid_columnconfigure(1, weight=1, uniform="group1")
         self.master.grid_rowconfigure(0, weight=1)
 
+        self.testIncrease=0
         self.update() # start the update loop
 
     def quit(self,event):
@@ -308,10 +340,47 @@ class Screen(Frame):
         print (self.master.winfo_screenwidth() - self.pad)
         return ((self.master.winfo_screenwidth() - self.pad) / 8)
 
+
+    def setTimeDimension(self,now,hours):
+        self.times=[]
+        self.dts=[]
+        for t in range(0,hours):
+            self.times.append(t)
+            self.dts.append(now+timedelta(hours=t))
+
+    def getTimeIndices(self,dts,valuesIn=None):
+        if valuesIn != None and len(dts) != len(valuesIn):
+            print "Mismatch in length: ",len(dts)," != ",len(valuesIn)
+            exit(2)
+
+        indices=[]
+        values=[]
+        j=0
+        for dt in dts:
+            for t in range(0,len(self.dts)):
+                if dt == self.dts[t]:
+                    indices.append(t)
+                    if valuesIn != None:
+                        values.append(valuesIn[j]+self.testIncrease)
+            j=j+1
+
+        indices=np.asarray(indices)
+        values=np.asarray(values)
+        if valuesIn != None:
+            return indices,values
+        else:
+            return indices
+
     def update(self):
 
+        #self.testIncrease=self.testIncrease-1
         print datetime.now()
         self.tick()
+
+        self.days=5
+        now=datetime.utcnow()
+        now=now.replace(second=0,minute=0,microsecond=0)
+        self.setTimeDimension(now,self.days*24)
 
         indoorValues, outdoorValues, rainValues = get_measurement(self.location)
         updated="Updated: "+str(datetime.now().strftime("%H:%M"))
@@ -376,40 +445,64 @@ class Screen(Frame):
         ticks=[0,15,30,45,60,75,90]
         self.nowcast.axes.get_xaxis().set_ticks(ticks)
 
-        print minutes
-        print values
+        if len(values) > 0:
+            lines=self.nowcast.plot(minutes, values)
+            lines[0].set_ydata(values)
+            self.nowcast.set_ylim(bottom=0.,top=max(values)+0.2)
 
-        lines=self.nowcast.plot(minutes, values)
-        lines[0].set_ydata(values)
-        self.nowcast.set_ylim(bottom=0.,top=max(values)+0.2)
-
-        if max(values) > 0:
-           self.nowcast.fill_between(minutes,0,values)
+            if max(values) > 0:
+                self.nowcast.fill_between(minutes,0,values)
 
 
-        timeSeries=getLocationForecast(self.location,self.vars)
+        accVars1h,otherVars,accVars2h,accVars3h,accVars6h=getLocationForecast(self.location,self.vars)
+        precipitation=[]
         times=[]
-        values=[]
-        for time in sorted(timeSeries):
-            var="precipitation"
-            var="temperature"
-            if var in timeSeries[time]:
-                print time, timeSeries[time]
-                times.append(time)
-                values.append(timeSeries[time][var])
+        var = "precipitation"
+        for time in sorted(accVars1h):
+            #print time,var,accVars1h[time]
+            times.append(time)
+            precipitation.append(accVars1h[time][var]["value"])
 
+        precIndices,precipitation=self.getTimeIndices(times,precipitation)
+
+        temperature=[]
+        windspeed=[]
+        times=[]
+        for time in sorted(otherVars):
+            var = "temperature"
+            times.append(time)
+            temperature.append(float(otherVars[time][var]["value"]))
+            var="windSpeed"
+            windspeed.append(float(otherVars[time][var]["mps"]))
+
+        tempIndices,temperature=self.getTimeIndices(times,temperature)
+        windIndices,windspeed=self.getTimeIndices(times,windspeed)
 
         self.forecast.clear()
-        lines=self.forecast.plot(times,values)
 
-        #ticks=[0,15,30,45,60,75,90]
-        #self.forecast.axes.get_xaxis().set_ticks(ticks)
-        now=datetime.utcnow()
-        last=datetime.now()+timedelta(days=2)
-        self.forecast.set_xlim(left=now,right=last)
-        print times
-        print values
-        lines[0].set_ydata(values)
+        c = ['r' if t > 0 else 'b' for t in temperature]
+        lines = [((x0, y0), (x1, y1)) for x0, y0, x1, y1 in zip(tempIndices[:-1], temperature[:-1], tempIndices[1:], temperature[1:])]
+        colored_lines = LineCollection(lines, colors=c, linewidths=(2,))
+        self.forecast.set_ylim(bottom=np.min(temperature)-1, top=np.max(temperature)+1)
+        self.forecast.add_collection(colored_lines)
+
+        if not hasattr(self,"axP"): self.axP=self.forecast.twinx()
+        self.axP.bar(precIndices,height=precipitation,width=0.8)
+        self.axP.set_ylim(bottom=0, top=max(np.maximum(precipitation,2)))
+
+        lineWind=self.forecast.plot(windIndices,windspeed)
+
+        today = now.replace(hour=0,second=0, minute=0, microsecond=0)
+        ticks=[]
+        labels=[]
+        for d in range(1,self.days+1):
+            ticks.append(today+timedelta(days=d))
+            labels.append((today+timedelta(days=d)).strftime("%d/%m"))
+
+        tickPositions=self.getTimeIndices(ticks)
+        self.forecast.axes.set_xticks(ticks=tickPositions,minor=False)
+        self.forecast.axes.set_xticklabels(labels, fontdict=None, minor=False)
+        lineWind[0].set_ydata(windspeed)
 
         self.bottomPlots.draw_idle()
 
