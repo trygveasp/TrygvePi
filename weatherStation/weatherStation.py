@@ -97,13 +97,18 @@ def get_location_forecast(location, variables, debug=False, test_fail_forecast=F
     longtude = location.lon
     msl = location.msl
 
-    request_string = "https://api.met.no/weatherapi/locationforecast/1.9/?lat={lat}&lon={lon}&msl={msl}".format(
+    request_string = "https://api.met.no/weatherapi/locationforecast/2.0/classic/?lat={lat}&lon={lon}&altitude={msl}".format(
         lat=latitude, lon=longtude, msl=msl)
     if debug:
         print(request_string)
+
     try:
         try:
-            response = requests.get(request_string, timeout=timeout_forecast)
+            headers = {
+                 'User-Agent': 'Home weather display',
+                'From': 'trygve@aspelien.no'  # This is another valid field
+            }
+            response = requests.get(request_string, timeout=timeout_forecast, headers=headers)
         except TimeoutError:
             raise TimeoutError(request_string+" timed out with timeout " + str(timeout_forecast))
 
@@ -179,7 +184,6 @@ def get_location_forecast(location, variables, debug=False, test_fail_forecast=F
         return acc_vars1h, other_vars, acc_vars2h, acc_vars3h, acc_vars6h
     except:
         raise Exception("Could not get location forecast")
-
 
 def get_nowcast(location, debug=False, test_fail_nowcast=False, timeout_nowcast=4):
 
@@ -725,7 +729,7 @@ if __name__ == "__main__":
                     debug_nowcast=False,
                     debug_forecast=False,
                     test_fail_netatmo=False,
-                    test_fail_forecast=True,
+                    test_fail_forecast=False,
                     test_fail_nowcast=False,
                     updtime=300000,
                     # updtime=5000,
