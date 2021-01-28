@@ -36,12 +36,45 @@ class Location(object):
         print("Netatmo name: ", self.name2)
 
 
+def get_netatmo_station_data(data, home_id, debug=False):
+
+    for station_data in data:
+        if debug:
+            print(station_data["home_id"], "== ", home_id, "?")
+        if station_data["home_id"] == home_id:
+            if debug:
+                print("Found station id ", home_id)
+            return station_data
+    if debug:
+        print("No station ID found ", home_id)
+    raise Exception("Station not found")
+
+
+def get_netatmo_module_data(data, data_type, debug=False):
+    values = {}
+    for module in data["modules"]:
+        if debug:
+            print("Found module ", module)
+        if data_type in module["data_type"]:
+            values = module["dashboard_data"]
+
+    if debug:
+        for key in values:
+            print("Found ", key, values[key])
+    return values
+
+
+def get_netatmo_indoor_data(data, debug=False):
+    values = data["dashboard_data"]
+    if debug:
+        for key in values:
+            print("Found ", key, values[key])
+    return values
+
+
 def get_measurement(location, debug=False, test_fail_netatmo=False):
 
     name = location.name2
-    indoor_values = {}
-    outdoor_values = {}
-    rain_values = {}
     try:
         authorization = lnetatmo.ClientAuth()
 
@@ -51,30 +84,29 @@ def get_measurement(location, debug=False, test_fail_netatmo=False):
             print(weather_data.stationByName(name))
             print(weather_data.rawData)
 
+        weather_data = get_netatmo_station_data(weather_data.rawData, location.home_id, debug=debug)
+
         # Inddor
         if debug:
             print("Inddor data:")
-        for key in weather_data.stationByName(name)["dashboard_data"]:
-            indoor_values.update({key: weather_data.stationByName(name)["dashboard_data"][key]})
-            if debug:
-                print(key, weather_data.stationByName(name)["dashboard_data"][key])
+
+        indoor_values = get_netatmo_indoor_data(weather_data, debug=debug)
+        if debug:
+            print(indoor_values)
 
         # Outdoor
         if debug:
             print("Outddor data:")
-        for key in weather_data.stationByName(name)["modules"][0]["dashboard_data"]:
-            outdoor_values.update({key: weather_data.stationByName(name)["modules"][0]["dashboard_data"][key]})
-            if debug:
-                print(key, weather_data.stationByName(name)["modules"][0]["dashboard_data"][key])
+        outdoor_values = get_netatmo_module_data(weather_data, "Temperature")
+        if debug:
+            print(outdoor_values)
 
         # Rain
         if debug:
             print("Rain data")
-        if len(weather_data.stationByName(name)["modules"]) > 1:
-            for key in weather_data.stationByName(name)["modules"][1]["dashboard_data"]:
-                rain_values.update({key: weather_data.stationByName(name)["modules"][1]["dashboard_data"][key]})
-                if debug:
-                    print(key, weather_data.stationByName(name)["modules"][1]["dashboard_data"][key])
+        rain_values = get_netatmo_module_data(weather_data, "Rain")
+        if debug:
+            print(rain_values)
 
         if debug:
             print(indoor_values)
@@ -184,6 +216,7 @@ def get_location_forecast(location, variables, debug=False, test_fail_forecast=F
         return acc_vars1h, other_vars, acc_vars2h, acc_vars3h, acc_vars6h
     except:
         raise Exception("Could not get location forecast")
+
 
 def get_nowcast(location, debug=False, test_fail_nowcast=False, timeout_nowcast=4):
 
@@ -709,7 +742,7 @@ class Screen(Frame):
 
 if __name__ == "__main__":
 
-    ids = ["5ea2e122a91a6479dd163b47", "5ea0320e5f0d964a8402d322","5ea2ded4a91a64e6511638e0"]
+    ids = ["5ea2e122a91a6479dd163b47", "5ea0320e5f0d964a8402d322", "5ea2ded4a91a64e6511638e0"]
     names = ["Meiselen 19", "Bøen", "Solbakken"]
     names2 = ["Aspelien Konnerud (Indoor)", "Aspelien (Indoor)", "Solbakken (Indoor)"]
     latitudes = [59.7350, 59.9775, 59.7516]
