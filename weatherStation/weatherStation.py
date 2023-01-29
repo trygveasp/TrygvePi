@@ -742,12 +742,16 @@ class Screen(Frame):
 
 if __name__ == "__main__":
 
-    ids = ["5ea2e122a91a6479dd163b47", "5ea0320e5f0d964a8402d322", "5ea2ded4a91a64e6511638e0"]
-    names = ["Meiselen 19", "Bøen", "Solbakken"]
-    names2 = ["Aspelien Konnerud (Indoor)", "Aspelien (Indoor)", "Solbakken (Indoor)"]
-    latitudes = [59.7350, 59.9775, 59.7516]
-    longitudes = [10.1242, 9.8978, 10.3204]
-    msls = [231, 175, 170]
+    # (u'5ea2e122a91a6479dd163b47', '== ', '5ea0320e5f0d964a8402d322', '?')
+    # (u'5ea2ded4a91a64e6511638e0', '== ', '5ea0320e5f0d964a8402d322', '?')
+    # (u'61c978cc67e7830fbc44db8d', '== ', '5ea0320e5f0d964a8402d322', '?')
+    # (u'629bb3dab578163e8439299f', '== ', '5ea0320e5f0d964a8402d322', '?')
+    ids = ["5ea2e122a91a6479dd163b47", "629bb3dab578163e8439299f", "5ea2ded4a91a64e6511638e0", "61c978cc67e7830fbc44db8d"]
+    names = ["Meiselen 19", "Hokksund", "Solbakken", "Skareseter"]
+    names2 = ["Aspelien Konnerud (Indoor)", "Hokksund Stasjonsby (Indoor)", "Solbakken (Indoor)", "Skareseterveien (Indoor)"]
+    latitudes = [59.7350, 59.766965, 59.7516, 60.287246]
+    longitudes = [10.1242, 9.909917, 10.3204, 9.296931]
+    msls = [231, 12, 170, 909]
 
     stations = []
     for iloc in range(0, len(names)):
