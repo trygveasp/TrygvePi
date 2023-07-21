@@ -1,7 +1,10 @@
 #!/usr/bin/python2.7
 # encoding=utf-8
 
-from Tkinter import *
+try:
+    import Tkinter as tkinter
+except ModuleNotFoundError:
+    import tkinter
 import lnetatmo
 from time import strftime
 import requests
@@ -224,14 +227,15 @@ def get_nowcast(location, debug=False, test_fail_nowcast=False, timeout_nowcast=
     latitiude = location.lat
     longitude = location.lon
 
-    request_string = "https://api.met.no/weatherapi/nowcast/0.9/?lat={lat}&lon={lon}".format(lat=latitiude,
+    request_string = "https://api.met.no/weatherapi/nowcast/2.0/classic?lat={lat}&lon={lon}".format(lat=latitiude,
                                                                                              lon=longitude)
     if debug:
         print(request_string)
     try:
         # Website data
+        headers = {"User-Agent": "TrygvePi https://github.com/trygveasp/TrygvePi trygve@aspelien.no"}
         try:
-            response = requests.get(request_string, timeout=timeout_nowcast)
+            response = requests.get(request_string, timeout=timeout_nowcast, headers=headers)
         except TimeoutError:
             raise TimeoutError(request_string + " timed out with timeout " + str(timeout_nowcast))
 
@@ -239,7 +243,11 @@ def get_nowcast(location, debug=False, test_fail_nowcast=False, timeout_nowcast=
         values = []
 
         # Gets the website data
+        if debug:
+            print(response.content)
         doc_root = xml.etree.ElementTree.fromstring(response.content)
+        if debug:
+            print(doc_root)
         if len(doc_root) > 0:
             product = doc_root[1]
             # Gets from-time and rain-value in a tuple and appends it to a list.
@@ -266,12 +274,12 @@ def get_nowcast(location, debug=False, test_fail_nowcast=False, timeout_nowcast=
         if test_fail_nowcast:
             raise Exception("test_fail_nowcast")
         return minutes, values
-    except:
-        print("Could not get nowcast")
+    except Exception as exc:
+        print("Could not get nowcast", str(exc))
         raise
 
 
-class Screen(Frame):
+class Screen(tkinter.Frame):
     def __init__(self, master, locations,
                  debug=False,
                  debug_update=False,
@@ -287,7 +295,7 @@ class Screen(Frame):
                  timeout_nowcast=4,
                  timeout_forecast=5):
 
-        Frame.__init__(self, master)
+        tkinter.Frame.__init__(self, master)
 
         # Initialize
         self.master = master
@@ -347,12 +355,12 @@ class Screen(Frame):
                      "fog", "lowClouds", "mediumClouds", "highClouds", "temperatureProbability",
                      "windProbability", "dewpointTemperature"]
 
-        self.netatmo = Canvas(self.master, bg="white", width=380, height=150)
+        self.netatmo = tkinter.Canvas(self.master, bg="white", width=380, height=150)
 
-        self.netatmo_outdoor = Canvas(self.master, bg="white", width=380, height=130)
+        self.netatmo_outdoor = tkinter.Canvas(self.master, bg="white", width=380, height=130)
 
         self.time1 = ''
-        self.clock = Label(self.master, font=('times', 60, 'bold'), bg='white')
+        self.clock = tkinter.Label(self.master, font=('times', 60, 'bold'), bg='white')
 
         my_dpi = 80
         sthisfig = Figure(figsize=(int(float(400)/float(my_dpi)), int(float(150)/float(my_dpi))), dpi=my_dpi)
@@ -389,7 +397,7 @@ class Screen(Frame):
         self.update()  # start the update loop
 
     def quit(self, event):
-        Frame.quit(self)
+        tkinter.Frame.quit(self)
 
     def change_location(self, event):
         self.loc_index = self.loc_index + 1
@@ -431,13 +439,13 @@ class Screen(Frame):
 
     def toggle_geom(self, event):
         geom = self.master.winfo_geometry()
-        if debug:
+        if self.debug:
             print(geom, self._geom)
         self.master.geometry(self._geom)
         self._geom = geom
 
     def find_x_center(self, canvas, item):
-        if debug:
+        if self.debug:
             print(self.master.winfo_screenwidth() - self.pad)
         return (self.master.winfo_screenwidth() - self.pad) / 8
 
@@ -498,10 +506,6 @@ class Screen(Frame):
             pass
 
         if indoor_values is not None and outdoor_values is not None and rain_values is not None:
-            # if self.debug:
-            #    print(indoor_values)
-            #    print(outdoor_values)
-            #    print(rain_values)
 
             # Inddor
             label = str(self.location.name) + " (inne)"
@@ -757,7 +761,7 @@ if __name__ == "__main__":
     for iloc in range(0, len(names)):
         stations.append(Location(ids[iloc], names[iloc], longitudes[iloc], latitudes[iloc], msls[iloc], names2[iloc]))
 
-    root = Tk()
+    root = tkinter.Tk()
     screen = Screen(root, stations,
                     debug=False,
                     debug_update=False,
