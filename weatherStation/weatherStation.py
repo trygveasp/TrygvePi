@@ -1,6 +1,7 @@
 #!/usr/bin/python2.7
 # encoding=utf-8
 
+import os
 try:
     import Tkinter as tkinter
 except ModuleNotFoundError:
@@ -757,6 +758,9 @@ if __name__ == "__main__":
     longitudes = [10.1242, 9.909917, 10.3204, 9.296931]
     msls = [231, 12, 170, 909]
 
+    print(os.environ["CLIENT_ID"])
+    print(os.environ["CLIENT_SECRET"])
+    print(os.environ["REFRESH_TOKEN"])
     stations = []
     for iloc in range(0, len(names)):
         stations.append(Location(ids[iloc], names[iloc], longitudes[iloc], latitudes[iloc], msls[iloc], names2[iloc]))
