@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 pip install lnetatmo==3.0.0 --upgrade
 
