@@ -14,6 +14,7 @@ import dateutil.parser
 from datetime import timedelta, datetime
 import matplotlib
 import pytz
+import threading
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import gridspec
@@ -482,9 +483,16 @@ class Screen(tkinter.Frame):
     def update(self):
 
         # self.testIncrease=self.testIncrease-1
-        if self.debug_update:
-            print(datetime.now())
-        self.tick()
+        #if self.debug_update:
+        print(datetime.now())
+        t1 = threading.Thread(target=self.tick())
+        t1.start()
+        t2 = threading.Thread(target=self.update_data())
+        t2.start()
+        # self.tick()
+
+    def update_data(self):
+
         self.days = 5
         now = datetime.utcnow()
         now = now.replace(second=0, minute=0, microsecond=0)
