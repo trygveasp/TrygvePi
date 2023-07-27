@@ -79,7 +79,6 @@ def temp_color(value):
 
 def temp_text(value):
     if value != "NA":
-        # txt = "%s °C" % (value)
         txt = "%s" % value
     else:
         txt = "NA"
