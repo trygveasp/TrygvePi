@@ -47,19 +47,31 @@ def get_time_indices(dts, values_in=None, test_increase=0, days=5):
     else:
         return indices
 
-def plot_location_forecast(panel, axP, ax_wind, acc_vars1h, other_vars, test_increase=0, days=5):
+def plot_location_forecast(panel, axP, ax_wind, acc_vars1h, acc_vars6h, other_vars, test_increase=0, days=5):
     now = datetime.utcnow()
+    now = now.replace(second=0, minute=0, microsecond=0)
     precipitation = []
     precipitation_min = []
     precipitation_max = []
     prec_times = []
     var = "precipitation"
     for time in sorted(acc_vars1h):
+        print(time)
         prec_times.append(time)
         precipitation.append(acc_vars1h[time][var]["value"])
         precipitation_min.append(acc_vars1h[time][var]["minvalue"])
         precipitation_max.append(acc_vars1h[time][var]["maxvalue"])
+    for time in sorted(acc_vars6h):
+        for dt in range(0, 6):
+            ttime = time + timedelta(hours=dt)
+            if ttime not in prec_times:
+                print(time, ttime)
+                prec_times.append(ttime)
+                precipitation.append(acc_vars6h[time][var]["value"])
+                precipitation_min.append(acc_vars6h[time][var]["minvalue"])
+                precipitation_max.append(acc_vars6h[time][var]["maxvalue"])
 
+    prec_indices, precipitation_max = get_time_indices(prec_times, values_in=precipitation_max, test_increase=test_increase, days=days)
     prec_indices, precipitation = get_time_indices(prec_times, values_in=precipitation, test_increase=test_increase, days=days)
     temperature = []
     windspeed = []
@@ -163,7 +175,7 @@ def get_location_forecast(location, variables, test_fail_forecast=False,
                                     value = float(value) / float(acc_time)
                                 atts.update({a: value})
 
-                            logger.debug("time=%s var=%s atts=%s", time, var, atts)
+                            logger.debug("time=%s var=%s atts=%s", dt_to, var, atts)
                             # Update accumulated values valid for this time step
                             if int(acc_time) == 1:
                                 acc_vars1h.update({dt_to: {var: atts}})
