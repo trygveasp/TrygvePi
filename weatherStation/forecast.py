@@ -56,7 +56,6 @@ def plot_location_forecast(panel, axP, ax_wind, acc_vars1h, acc_vars6h, other_va
     prec_times = []
     var = "precipitation"
     for time in sorted(acc_vars1h):
-        print(time)
         prec_times.append(time)
         precipitation.append(acc_vars1h[time][var]["value"])
         precipitation_min.append(acc_vars1h[time][var]["minvalue"])
@@ -65,7 +64,6 @@ def plot_location_forecast(panel, axP, ax_wind, acc_vars1h, acc_vars6h, other_va
         for dt in range(0, 6):
             ttime = time + timedelta(hours=dt)
             if ttime not in prec_times:
-                print(time, ttime)
                 prec_times.append(ttime)
                 precipitation.append(acc_vars6h[time][var]["value"])
                 precipitation_min.append(acc_vars6h[time][var]["minvalue"])

@@ -185,14 +185,17 @@ class Screen(tkinter.Frame):
             try:
                 indoor_values, outdoor_values, rain_values = get_measurement(self.location,
                                                                             test_fail_netatmo=test_fail_netatmo)
-            except:
-                pass
+            except Exception as exc:
+                logger.warning("Got exception %s", str(exc))
 
             if indoor_values is not None and outdoor_values is not None and rain_values is not None:
-                self.netatmo = plot_station_indoor_info(self.netatmo, self.location, indoor_values)
-                self.netatmo_outdoor = plot_station_outdoor_info(self.netatmo_outdoor, self.location, outdoor_values, rain_values)
+                try:
+                    self.netatmo = plot_station_indoor_info(self.netatmo, self.location, indoor_values)
+                    self.netatmo_outdoor = plot_station_outdoor_info(self.netatmo_outdoor, self.location, outdoor_values, rain_values)
+                except Exception as exc:
+                    logger.warning("Got exception %s", str(exc))
             else:
-                print("Can not update netatmo")
+                logger.warning("Can not update netatmo")
 
         ###########################################################
         # Nowcast
@@ -213,9 +216,12 @@ class Screen(tkinter.Frame):
             self.nowcast.clear()
 
             if minutes is not None and values is not None:
-                self.nowcast = plot_nowcast(self.nowcast, minutes, values)
+                try:
+                    self.nowcast = plot_nowcast(self.nowcast, minutes, values)
+                except Exception as exc:
+                    logger.warning("Got exception %s", str(exc))
             else:
-                print("Could not update nowcast")
+                logger.warning("Can not update nowcast")
 
         ###############################################################################
         # Location forecast
@@ -223,6 +229,7 @@ class Screen(tkinter.Frame):
         if self.show_forecast:
             acc_vars1h = None
             other_vars = None
+            acc_vars6h = None
             test_fail_forecast = False
             if self.test_fail_forecast:
                 test_fail_forecast = True
@@ -234,11 +241,14 @@ class Screen(tkinter.Frame):
             except Exception as exc:
                 logger.warning("Got exception %s", str(exc))
 
-            if acc_vars1h is not None and other_vars is not None:
-                self.forecast = plot_location_forecast(
-                    self.forecast, self.ax_prec, self.ax_wind, acc_vars1h, acc_vars6h, other_vars,
-                    test_increase=self.test_increase, days=self.days)
-                logger.debug("Updated forecast")
+            if acc_vars1h is not None and other_vars is not None and acc_vars6h is not None:
+                try:
+                    self.forecast = plot_location_forecast(
+                        self.forecast, self.ax_prec, self.ax_wind, acc_vars1h, acc_vars6h, other_vars,
+                        test_increase=self.test_increase, days=self.days)
+                    logger.debug("Updated forecast")
+                except Exception as exc:
+                    logger.warning("Got exception %s", str(exc))
 
             else:
                 logger.warning("Can not update location forecast")
