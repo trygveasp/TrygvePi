@@ -254,7 +254,7 @@ class Screen(tkinter.Frame):
                 logger.warning("Can not update location forecast")
 
         self.bottomplots.draw_idle()
-        self.after(self.updtime, self.update)  # ask the mainloop to call this method again in ms
+        self.after(self.updtime, self.update_data)  # ask the mainloop to call this method again in ms
 
     def tick(self):
         # get the current local time from the PC
