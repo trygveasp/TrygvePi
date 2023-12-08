@@ -20,9 +20,11 @@ if __name__ == "__main__":
     longitudes = [10.1242, 9.909917, 10.3204, 9.296931]
     msls = [231, 12, 170, 909]
 
-    logger.info("CLIENT_ID=%s", os.environ["CLIENT_ID"])
-    logger.info("CLIENT_SECRET=%s", os.environ["CLIENT_SECRET"])
-    logger.info("REFRESH_TOKEN=%s", os.environ["REFRESH_TOKEN"])
+    keys = ["CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN"]
+    for key in keys:
+        if key in os.environ:
+            os.environ.pop(key)
+
     stations = []
     for iloc in range(0, len(names)):
         stations.append(Location(ids[iloc], names[iloc], longitudes[iloc], latitudes[iloc], msls[iloc], names2[iloc]))

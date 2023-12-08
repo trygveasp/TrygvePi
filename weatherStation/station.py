@@ -17,10 +17,17 @@ def get_netatmo_station_data(data, home_id):
 
 def get_netatmo_module_data(data, data_type):
     values = {}
+    logger.debug("data_type=%s", data_type)
     for module in data["modules"]:
         logger.debug("Found module %s", module)
+        logger.debug("Available data types: %s", module["data_type"])
         if data_type in module["data_type"]:
-            values = module["dashboard_data"]
+            logger.debug("Look for %s in %s", data_type, module)
+            if "dashboard_data" in module:
+                logger.debug("dashboard_data=%s", module["dashboard_data"])
+                values = module["dashboard_data"]
+            else:
+                values = module
 
     for key in values:
         logger.debug("Found %s %s", key, values[key])
