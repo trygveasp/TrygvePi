@@ -1,8 +1,19 @@
 #!/bin/bash
 
-pip install lnetatmo==4.0.0 --upgrade
+if [ "$#" -ne "1" ]; then
+  echo "Usage: $0 name"
+  exit 1
+fi
+station=$1
 
-env
+echo $PWD > $HOME/.weatherstation_location
+echo $station > $HOME/.weatherstation_name
+# Update data
+ln -sf $PWD/bin/data_weatherstation.sh $HOME/Desktop/data_weatherstation.sh
 
-#[ -f ~/.netatmo.credentials ] && mv ~/.netatmo.credentials ~/.netatmo.credentials.old
-#cat ~/.netatmo.credentials.old
+# Update source code
+ln -sf $PWD/bin/update_weatherstation.sh $HOME/Desktop/update_weatherstation.sh
+
+# Start weather station
+ln -sf $PWD/bin/start_weatherstation.sh $HOME/Desktop/start_weatherstation.sh
+
