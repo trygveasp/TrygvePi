@@ -30,7 +30,7 @@ if __name__ == "__main__":
             "name": "Hokksund",
             "name2": "Hokksund Stasjonsby (Indoor)",
             "latitude": 59.766965,
-            "longitude": 10.3204,
+            "longitude": 9.909917,
             "msl": 12
         },
         "Spikkestad": {
@@ -46,9 +46,9 @@ if __name__ == "__main__":
             "order": ["Skareseter", "Hokksund", "Konnerud", "Spikkestad"],
             "id": "63fcbc6f10e8eeb6a00fe448",
             "name": "Skareseter",
-            "name2": "Solbakken (Indoor)",
-            "latitude": 59.7389153,
-            "longitude": 10.3427746,
+            "name2": "Skareseterveien (Indoor)",
+            "latitude": 60.287246,
+            "longitude": 9.296931,
             "msl": 909 
         },
     }
