@@ -50,7 +50,7 @@ def get_measurement(location, test_fail_netatmo=False):
         credentials = os.path.expanduser("~/.netatmo.credentials")
         refreshToken = None
         if os.path.exists(credentials):
-            with open(credentials, mode="r", encoding="utf8") as fh:
+            with open(credentials, mode="r") as fh:
                 refreshToken = json.load(fh)["REFRESH_TOKEN"]
             authorization = lnetatmo.ClientAuth(refreshToken=refreshToken)
         else:
