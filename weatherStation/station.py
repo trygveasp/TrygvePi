@@ -2,7 +2,7 @@ import lnetatmo
 from datetime import datetime
 import pytz
 from log import logger
-from os.path import expanduser
+import os
 import json
 
 def get_netatmo_station_data(data, home_id):
@@ -47,13 +47,13 @@ def get_measurement(location, test_fail_netatmo=False):
 
     name = location.name2
     try:
-        credentials = expanduser("~/.netatmo.credentials")
+        credentials = os.path.expanduser("~/.netatmo.credentials")
         refreshToken = None
-        try:
+        if os.path.exists(credentials):
             with open(credentials, mode="r", encoding="utf8") as fh:
                 refreshToken = json.load(fh)["REFRESH_TOKEN"]
             authorization = lnetatmo.ClientAuth(refreshToken=refreshToken)
-        except FileNotFoundError:
+        else:
             authorization = lnetatmo.ClientAuth()
 
         # 2 : Get devices list
