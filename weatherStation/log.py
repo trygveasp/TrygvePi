@@ -1,5 +1,6 @@
 import logging
 
+logging.basicConfig()
 logger = logging.getLogger('TrygvePi')
 # logger.setLevel(logging.DEBUG)
 logger.setLevel(logging.INFO)
