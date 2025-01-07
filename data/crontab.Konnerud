@@ -1,3 +1,2 @@
-0 23 * * * DISPLAY=:0 /usr/bin/xset dmps 10 10 10
-0 6 * * * DISPLAY=:0 /usr/bin/xset -dpms
-
+0 0 * * * DISPLAY=:0 /usr/bin/xset dpms 10 10 10
+30 5 * * * DISPLAY=:0 /usr/bin/xset -dpms
